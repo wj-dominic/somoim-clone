@@ -1,11 +1,10 @@
 package com.somoim.service;
 
-import com.somoim.exception.DuplicateEmailException;
-import com.somoim.mapper.UserMapper;
-import com.somoim.model.dao.User;
+import com.somoim.exception.NotFoundException;
 import com.somoim.model.dto.LoginUser;
-import com.somoim.model.dto.ResignUser;
 import com.somoim.model.dto.SignUpUser;
+import com.somoim.model.entity.UserEntity;
+import com.somoim.repository.user.UserRepository;
 import java.time.LocalDateTime;
 import javax.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -17,64 +16,53 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserMapper userMapper;
-    private final PasswordEncoder passwordEncorder;
+    private final UserRepository userRepository;
+
+    private final PasswordEncoder passwordEncoder;
+
     private final HttpSession httpSession;
+
     private final String USER_ID = "USER_ID";
 
     @Transactional
     public void createUser(SignUpUser user) {
-        if (checkEmail(user.getEmail())) {
-            throw new DuplicateEmailException("This email already registered.");
-        }
-
         LocalDateTime time = LocalDateTime.now();
 
-        User newUser = User.builder()
-            .email(user.getEmail())
-            .password(passwordEncorder.encode(user.getPassword()))
-            .createAt(time)
-            .modifyAt(time)
-            .disband(false)
-            .build();
-        userMapper.insertUser(newUser);
-    }
+        UserEntity newUser = UserEntity.builder()
+                .email(user.getEmail())
+                .password(passwordEncoder.encode(user.getPassword()))
+                .createAt(time)
+                .modifyAt(time)
+                .disband(false)
+                .build();
 
-    @Transactional(readOnly = true)
-    public boolean checkEmail(String email) {
-        return userMapper.isExistsEmail(email);
+        userRepository.save(newUser);
     }
 
     @Transactional
-    public void deleteUser(ResignUser user) {
-        User resignUser = User.builder()
-            .email(user.getEmail())
-            .modifyAt(LocalDateTime.now())
-            .disband(true)
-            .build();
-        userMapper.deleteUser(resignUser);
+    public void deleteUser() {
+        UserEntity userEntity = getCurrentUser();
+
+        userEntity.setDisband(true);
+        userEntity.setModifyAt(LocalDateTime.now());
     }
 
     @Transactional(readOnly = true)
-    public User findUserByEmail(String email) {
-        return userMapper.findUserByEmail(email);
-    }
-
     public void loginUser(LoginUser loginUser) {
-        User user = findUserByEmail(loginUser.getEmail());
-        if (user != null) {
-            if (passwordEncorder.matches(loginUser.getPassword(), user.getPassword())) {
-                if (!checkDisband(loginUser.getEmail())) {
-                    httpSession.setAttribute(USER_ID, user.getId());
-                } else {
-                    throw new IllegalArgumentException("The retired user.");
-                }
-            } else {
-                throw new IllegalArgumentException("The password is invalid.");
-            }
-        } else {
-            throw new IllegalArgumentException("The user does not exist.");
+        UserEntity user = findUserByEmail(loginUser.getEmail());
+        if (user == null) {
+            throw new IllegalArgumentException("user does not exist.");
         }
+
+        if (!passwordEncoder.matches(loginUser.getPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("password is wrong.");
+        }
+
+        if (user.getDisband()) {
+            throw new IllegalArgumentException("resigned user");
+        }
+
+        httpSession.setAttribute(USER_ID, user.getId());
     }
 
     public void logoutUser() {
@@ -82,7 +70,15 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public boolean checkDisband(String email) {
-        return userMapper.getDisbandByEmail(email);
+    public UserEntity findUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    @Transactional(readOnly = true)
+    public UserEntity getCurrentUser() {
+        Long userId = (Long) httpSession.getAttribute(USER_ID);
+
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("user(" + userId + ") not found."));
     }
 }

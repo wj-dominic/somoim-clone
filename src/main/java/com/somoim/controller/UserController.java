@@ -1,7 +1,7 @@
 package com.somoim.controller;
 
+import com.somoim.annotation.LoginCheck;
 import com.somoim.model.dto.LoginUser;
-import com.somoim.model.dto.ResignUser;
 import com.somoim.model.dto.SignUpUser;
 import com.somoim.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -22,9 +22,10 @@ public class UserController {
         userService.createUser(user);
     }
 
+    @LoginCheck
     @PostMapping("/resign")
-    public void deleteUser(@RequestBody ResignUser resignUser) {
-        userService.deleteUser(resignUser);
+    public void deleteUser() {
+        userService.deleteUser();
     }
 
     @PostMapping("/login")
@@ -33,6 +34,7 @@ public class UserController {
         return ResponseEntity.ok("login success");
     }
 
+    @LoginCheck
     @GetMapping("/logout")
     public void logoutUser() {
         userService.logoutUser();

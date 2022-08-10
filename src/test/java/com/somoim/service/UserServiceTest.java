@@ -1,10 +1,11 @@
 package com.somoim.service;
 
-import com.somoim.mapper.UserMapper;
-import com.somoim.model.dao.User;
 import com.somoim.model.dto.LoginUser;
-import com.somoim.model.dto.ResignUser;
 import com.somoim.model.dto.SignUpUser;
+import com.somoim.model.entity.UserEntity;
+import com.somoim.repository.user.UserRepository;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,103 +25,132 @@ import static org.mockito.Mockito.*;
 class UserServiceTest {
 
     @Mock
-    PasswordEncoder passwordEncorder;
+    PasswordEncoder passwordEncoder;
 
     @Mock
     HttpSession httpSession;
 
     @Mock
-    UserMapper userMapper;
+    UserRepository userRepository;
 
     @InjectMocks
     UserService userService;
 
     SignUpUser signUpUser;
-    ResignUser resignUser;
+
     LoginUser loginUser;
 
     @BeforeEach
     void setUp() {
         signUpUser = new SignUpUser();
-        signUpUser.setEmail("emailTest@email.com");
-        signUpUser.setPassword("password");
-
-        resignUser = new ResignUser();
-        resignUser.setEmail("emailTest@email.com");
+        signUpUser.setEmail("test@somoim.com");
+        signUpUser.setPassword("1234");
 
         loginUser = new LoginUser();
-        loginUser.setEmail("emailTest@email.com");
-        loginUser.setPassword("password");
+        loginUser.setEmail("test@somoim.com");
+        loginUser.setPassword("1234");
     }
 
     @Test
-    void insertUser() {
-        //given
-        when(userService.checkEmail("emailTest@email.com")).thenReturn(false);
+    void createUserTest() {
         //when
         userService.createUser(signUpUser);
         //then
-        ArgumentCaptor<User> argument = ArgumentCaptor.forClass(User.class);
-        Mockito.verify(userMapper).insertUser(argument.capture());
+        ArgumentCaptor<UserEntity> argument = ArgumentCaptor.forClass(UserEntity.class);
+        Mockito.verify(userRepository).save(argument.capture());
         assertEquals(signUpUser.getEmail(), argument.getValue().getEmail());
         assertNotNull(argument.getValue().getCreateAt());
         assertNotNull(argument.getValue().getModifyAt());
     }
 
     @Test
-    void checkEmail() {
-        //given
-        when(userMapper.isExistsEmail("emailTest@email.com")).thenReturn(true);
-        //when
-        assertTrue(userService.checkEmail(signUpUser.getEmail()));
-    }
+    void deleteUserTest() {
+        UserEntity userEntity = UserEntity.builder()
+                .email("test@somoim.com")
+                .password("1234")
+                .disband(false)
+                .modifyAt(LocalDateTime.now())
+                .build();
+        userEntity.setId(1L);
 
-    @Test
-    void deleteUser() {
+        when(httpSession.getAttribute("USER_ID")).thenReturn(1L);
+
+        when(userRepository.findById(userEntity.getId()))
+                .thenReturn(Optional.of(userEntity));
+
         //when
-        userService.deleteUser(resignUser);
+        userService.deleteUser();
         //then
-        ArgumentCaptor<User> argument = ArgumentCaptor.forClass(User.class);
-        Mockito.verify(userMapper).deleteUser(argument.capture());
-        assertTrue(argument.getValue().getDisband());
-        assertNotNull(argument.getValue().getModifyAt());
+        assertTrue(userEntity.getDisband());
     }
 
     @Test
-    void loginUser() {
+    void loginUserTestWithSuccess() {
         //given
-        User signUpUser = User.builder()
-            .email(this.signUpUser.getEmail())
-            .password(this.signUpUser.getPassword())
-            .disband(false)
-            .build();
-        signUpUser.setId(1L);
+        UserEntity userEntity = UserEntity.builder()
+                .email("test@somoim.com")
+                .password("1234")
+                .disband(false)
+                .build();
+        userEntity.setId(1L);
 
         //when
-        when(userService.findUserByEmail(loginUser.getEmail())).thenReturn(signUpUser);
-        when(passwordEncorder.matches(loginUser.getPassword(), signUpUser.getPassword())).thenReturn(true);
+        when(userRepository.findByEmail(userEntity.getEmail()))
+                .thenReturn(userEntity);
+
+        //when
+        when(passwordEncoder.matches(loginUser.getPassword(), userEntity.getPassword()))
+                .thenReturn(true);
 
         userService.loginUser(loginUser);
 
         //then
-        verify(httpSession).setAttribute("USER_ID", signUpUser.getId());
+        verify(httpSession).setAttribute("USER_ID", userEntity.getId());
     }
 
     @Test
-    void checkDisband() {
+    void loginUserTestWithFail() {
         //given
-        User signUpUser = User.builder()
-            .email(this.signUpUser.getEmail())
-            .password(this.signUpUser.getPassword())
-            .disband(false)
-            .build();
+        UserEntity userEntity = UserEntity.builder()
+                .email("test@somoim.com")
+                .password("1234")
+                .disband(false)
+                .build();
+        userEntity.setId(1L);
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                                                       () -> userService.loginUser(loginUser));
+        assertEquals("user does not exist.", thrown.getMessage());
 
         //when
-        when(userMapper.getDisbandByEmail(signUpUser.getEmail())).thenReturn(true);
+        when(userRepository.findByEmail(userEntity.getEmail()))
+                .thenReturn(userEntity);
 
-        boolean result = userService.checkDisband(signUpUser.getEmail());
+        //when
+        when(passwordEncoder.matches(loginUser.getPassword(), userEntity.getPassword()))
+                .thenReturn(false);
 
-        //then
-        assertTrue(result);
+        thrown = assertThrows(IllegalArgumentException.class,
+                              () -> userService.loginUser(loginUser));
+        assertEquals("password is wrong.", thrown.getMessage());
+
+        userEntity.setDisband(true);
+        //when
+        when(userRepository.findByEmail(userEntity.getEmail()))
+                .thenReturn(userEntity);
+
+        //when
+        when(passwordEncoder.matches(loginUser.getPassword(), userEntity.getPassword()))
+                .thenReturn(true);
+
+        thrown = assertThrows(IllegalArgumentException.class,
+                              () -> userService.loginUser(loginUser));
+        assertEquals("resigned user", thrown.getMessage());
+    }
+
+    @Test
+    void logoutTest() {
+        userService.logoutUser();
+        verify(httpSession).removeAttribute("USER_ID");
     }
 }
