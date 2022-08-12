@@ -18,6 +18,15 @@ spring:
       data-locations: classpath:/seeds/data.sql
       mode: never
 
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        hbm2ddl:
+          auto: create # for test
+
   session:
     store-type: redis
   redis:
