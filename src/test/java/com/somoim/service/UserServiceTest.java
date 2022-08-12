@@ -1,5 +1,6 @@
 package com.somoim.service;
 
+import com.somoim.exception.DuplicateEmailException;
 import com.somoim.model.dto.LoginUser;
 import com.somoim.model.dto.SignUpUser;
 import com.somoim.model.entity.UserEntity;
@@ -52,7 +53,9 @@ class UserServiceTest {
     }
 
     @Test
-    void createUserTest() {
+    void createUserTestWithSuccess() {
+        when(userRepository.existsByEmail(signUpUser.getEmail())).thenReturn(false);
+
         //when
         userService.createUser(signUpUser);
         //then
@@ -61,6 +64,13 @@ class UserServiceTest {
         assertEquals(signUpUser.getEmail(), argument.getValue().getEmail());
         assertNotNull(argument.getValue().getCreateAt());
         assertNotNull(argument.getValue().getModifyAt());
+    }
+
+    @Test
+    void createUserTestWithFail() {
+        when(userRepository.existsByEmail(signUpUser.getEmail())).thenReturn(true);
+
+        assertThrows(DuplicateEmailException.class, () -> userService.createUser(signUpUser));
     }
 
     @Test

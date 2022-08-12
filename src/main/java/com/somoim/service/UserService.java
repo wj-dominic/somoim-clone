@@ -1,5 +1,6 @@
 package com.somoim.service;
 
+import com.somoim.exception.DuplicateEmailException;
 import com.somoim.exception.NotFoundException;
 import com.somoim.model.dto.LoginUser;
 import com.somoim.model.dto.SignUpUser;
@@ -26,6 +27,10 @@ public class UserService {
 
     @Transactional
     public void createUser(SignUpUser user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new DuplicateEmailException("email already registered.");
+        }
+
         LocalDateTime time = LocalDateTime.now();
 
         UserEntity newUser = UserEntity.builder()
@@ -45,6 +50,8 @@ public class UserService {
 
         userEntity.setDisband(true);
         userEntity.setModifyAt(LocalDateTime.now());
+
+        userRepository.save(userEntity);
     }
 
     @Transactional(readOnly = true)
