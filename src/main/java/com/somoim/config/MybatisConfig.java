@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @MapperScan(basePackages = "com.somoim.mapper")
-public class DatabaseConfig {
+public class MybatisConfig {
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -25,6 +25,7 @@ public class DatabaseConfig {
             applicationContext.getResources("classpath:/mapper/**/*.xml"));
         sessionFactory.setConfigLocation(
             applicationContext.getResource("classpath:mybatis-config.xml"));
+
         return sessionFactory.getObject();
     }
 

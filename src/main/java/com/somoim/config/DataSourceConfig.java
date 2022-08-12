@@ -10,9 +10,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -78,9 +78,9 @@ public class DataSourceConfig {
 
     @Bean
     public PlatformTransactionManager transactionManager(
-        @Qualifier(value = "lazyRoutingDataSource") DataSource lazyRoutingDataSource) {
-        DataSourceTransactionManager transactionManager = new DataSourceTransactionManager();
-        transactionManager.setDataSource(lazyRoutingDataSource);
-        return transactionManager;
+            @Qualifier(value = "lazyRoutingDataSource") DataSource lazyRoutingDataSource) {
+        JpaTransactionManager jpaTransactionManager = new JpaTransactionManager();
+        jpaTransactionManager.setDataSource(lazyRoutingDataSource);
+        return jpaTransactionManager;
     }
 }

@@ -2,13 +2,13 @@ spring:
   datasource:
     primary:
       driver-class-name: com.mysql.cj.jdbc.Driver
-      url: jdbc:mysql://localhost:3306/somoim?characterEncoding=UTF-8&userTimezone=true&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://localhost:3307/somoim?characterEncoding=UTF-8&userTimezone=true&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
       username: "root"
       password: "1234"
 
     readonly:
       driver-class-name: com.mysql.cj.jdbc.Driver
-      url: jdbc:mysql://localhost:3307/somoim?characterEncoding=UTF-8&userTimezone=true&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://localhost:3308/somoim?characterEncoding=UTF-8&userTimezone=true&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
       username: "repl"
       password: "1234"
 
@@ -17,6 +17,15 @@ spring:
       schema-locations: classpath:/seeds/schema.sql
       data-locations: classpath:/seeds/data.sql
       mode: never
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        hbm2ddl:
+          auto: create # for test
 
   session:
     store-type: redis
